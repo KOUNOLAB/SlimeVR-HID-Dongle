@@ -214,9 +214,5 @@ void loop()
     resetCounter.update();
     sendHIDData();
 
-    float tsens_out;
-    temperature_sensor_get_celsius(temp_handle, &tsens_out);
-    Serial.printf("Temp: %f\n", tsens_out);
-
     yield();
 }
