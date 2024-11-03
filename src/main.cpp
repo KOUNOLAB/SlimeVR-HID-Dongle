@@ -60,7 +60,16 @@ void setup() {
     }
 
     espnow.onTrackerPaired([&]() { led.sendBlinks(3, 0.1f); });
-    espnow.onTrackerConnected([&]() { led.sendBlinks(2, 0.1f); });
+    espnow.onTrackerConnected(
+            [&](uint8_t trackerId, const uint8_t *trackerMacAddress) {
+                led.sendBlinks(2, 0.1f);
+                uint8_t packet[16];
+                packet[0] = 0xff;
+                packet[1] = trackerId;
+                memcpy(&packet[2], trackerMacAddress, sizeof(uint8_t) * 6);
+                memset(&packet[8], 0, sizeof(uint8_t) * 8);
+                PacketHandling::getInstance().insert(packet);
+            });
 
     espnow.onPacketReceived(
             [&](const uint8_t packet[ESPNowCommunication::packetSizeBytes]) {

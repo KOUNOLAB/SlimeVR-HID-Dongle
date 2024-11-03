@@ -12,7 +12,7 @@
 
 class ESPNowCommunication {
 public:
-    static constexpr size_t packetSizeBytes = 20;
+    static constexpr size_t packetSizeBytes = 16;
 
     static ESPNowCommunication &getInstance();
 
@@ -23,7 +23,8 @@ public:
     bool isInPairingMode();
 
     void onTrackerPaired(std::function<void()> callback);
-    void onTrackerConnected(std::function<void()> callback);
+    void onTrackerConnected(
+            std::function<void(uint8_t, const uint8_t *)> callback);
     void onPacketReceived(
             std::function<void(const uint8_t data[packetSizeBytes])> callback);
 
@@ -31,10 +32,11 @@ private:
     ESPNowCommunication() = default;
 
     void invokeTrackerPairedEvent();
-    void invokeTrackerConnectedEvent();
+    void invokeTrackerConnectedEvent(uint8_t trackerId,
+                                     const uint8_t *trackerMacAddress);
     void invokePacketReceivedEvent(const uint8_t data[packetSizeBytes]);
 
-    void handleMessage(const esp_now_recv_info_t *espnowInfo,
+    void handleMessage(const uint8_t *senderMacAddress,
                        const uint8_t *data,
                        int dataLen);
 
@@ -46,7 +48,8 @@ private:
     bool pairing = false;
 
     std::vector<std::function<void()>> trackerPairedCallbacks;
-    std::vector<std::function<void()>> trackerConnectedCallbacks;
+    std::vector<std::function<void(uint8_t, const uint8_t *)>>
+            trackerConnectedCallbacks;
     std::vector<std::function<void(const uint8_t data[packetSizeBytes])>>
             packetReceivedCallbacks;
 
@@ -58,5 +61,5 @@ private:
                                                  0xff};
     static constexpr uint8_t espnowWifiChannel = 1;
 
-    friend void onReceive(const esp_now_recv_info_t *, const uint8_t *, int);
+    friend void onReceive(const uint8_t *, const uint8_t *, int);
 };

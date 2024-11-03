@@ -6,10 +6,12 @@
 #define MACSTR        "%02x:%02x:%02x:%02x:%02x:%02x"
 #define MAC2ARGS(mac) mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
 
-void onReceive(const esp_now_recv_info_t *espnowInfo,
+void onReceive(const uint8_t *senderMacAddress,
                const uint8_t *data,
                int dataLen) {
-    ESPNowCommunication::getInstance().handleMessage(espnowInfo, data, dataLen);
+    ESPNowCommunication::getInstance().handleMessage(senderMacAddress,
+                                                     data,
+                                                     dataLen);
 }
 
 ESPNowCommunication &ESPNowCommunication::getInstance() {
@@ -55,7 +57,8 @@ void ESPNowCommunication::onTrackerPaired(std::function<void()> callback) {
     trackerPairedCallbacks.push_back(callback);
 }
 
-void ESPNowCommunication::onTrackerConnected(std::function<void()> callback) {
+void ESPNowCommunication::onTrackerConnected(
+        std::function<void(uint8_t, const uint8_t *)> callback) {
     trackerConnectedCallbacks.push_back(callback);
 }
 
@@ -65,14 +68,16 @@ void ESPNowCommunication::onPacketReceived(
 }
 
 void ESPNowCommunication::invokeTrackerPairedEvent() {
-    for (auto &callback : trackerConnectedCallbacks) {
+    for (auto &callback : trackerPairedCallbacks) {
         callback();
     }
 }
 
-void ESPNowCommunication::invokeTrackerConnectedEvent() {
-    for (auto &callback : trackerPairedCallbacks) {
-        callback();
+void ESPNowCommunication::invokeTrackerConnectedEvent(
+        uint8_t trackerId,
+        const uint8_t *trackerMacAddress) {
+    for (auto &callback : trackerConnectedCallbacks) {
+        callback(trackerId, trackerMacAddress);
     }
 }
 
@@ -83,22 +88,21 @@ void ESPNowCommunication::invokePacketReceivedEvent(
     }
 }
 
-void ESPNowCommunication::handleMessage(const esp_now_recv_info_t *espnowInfo,
+void ESPNowCommunication::handleMessage(const uint8_t *senderMacAddress,
                                         const uint8_t *data,
                                         int dataLen) {
     const ESPNowMessage *message =
             reinterpret_cast<const ESPNowMessage *>(data);
     auto header = message->base.header;
     switch (header) {
-        using enum ESPNowMessageHeader;
-    case Pairing: {
+    case ESPNowMessageHeader::Pairing: {
         if (!pairing) {
             return;
         }
 
-        if (!addPeer(espnowInfo->src_addr)) {
+        if (!addPeer(senderMacAddress)) {
             Serial.printf("Couldn't add tracker at mac address " MACSTR "!\n",
-                          MAC2ARGS(espnowInfo->src_addr));
+                          MAC2ARGS(senderMacAddress));
             return;
         }
 
@@ -106,39 +110,39 @@ void ESPNowCommunication::handleMessage(const esp_now_recv_info_t *espnowInfo,
                 Configuration::getInstance().getSavedTrackerCount();
         ESPNowPairingAckMessage message;
         message.trackerId = nextTrackerId;
-        esp_now_send(espnowInfo->src_addr,
+        esp_now_send(senderMacAddress,
                      reinterpret_cast<uint8_t *>(&message),
                      sizeof(message));
         nextTrackerId++;
         Configuration::getInstance().changeSavedTrackerCount(nextTrackerId);
-        deletePeer(espnowInfo->src_addr);
+        deletePeer(senderMacAddress);
 
         Serial.printf("Paired a new tracker at mac address" MACSTR "!\n",
-                      MAC2ARGS(espnowInfo->src_addr));
+                      MAC2ARGS(senderMacAddress));
         invokeTrackerPairedEvent();
         break;
     }
-    case PairingAck:
+    case ESPNowMessageHeader::PairingAck:
         return;
-    case Connection: {
-        if (!addPeer(espnowInfo->src_addr)) {
+    case ESPNowMessageHeader::Connection: {
+        if (!addPeer(senderMacAddress)) {
             Serial.printf("Couldn't add tracker at mac address " MACSTR "!\n",
-                          MAC2ARGS(espnowInfo->src_addr));
+                          MAC2ARGS(senderMacAddress));
             return;
         }
 
-        ESPNowConnectionMessage message;
-        esp_now_send(espnowInfo->src_addr,
-                     reinterpret_cast<uint8_t *>(&message),
-                     sizeof(message));
-        deletePeer(espnowInfo->src_addr);
+        esp_now_send(senderMacAddress,
+                     reinterpret_cast<const uint8_t *>(message),
+                     sizeof(ESPNowConnectionMessage));
+        deletePeer(senderMacAddress);
 
         Serial.printf("Device with mac address " MACSTR " connected!\n",
-                      MAC2ARGS(espnowInfo->src_addr));
-        invokeTrackerConnectedEvent();
+                      MAC2ARGS(senderMacAddress));
+        invokeTrackerConnectedEvent(message->connection.trackerId,
+                                    senderMacAddress);
         break;
     }
-    case Packet:
+    case ESPNowMessageHeader::Packet:
         const uint8_t *packet = data + offsetof(ESPNowPacketMessage, data);
         invokePacketReceivedEvent(packet);
         break;

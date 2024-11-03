@@ -10,15 +10,18 @@
 #include <cstring>
 
 class PacketHandling {
+private:
+    static constexpr size_t packetSize = 16;
+
 public:
     static PacketHandling &getInstance();
 
-    void insert(const uint8_t data[20]);
+    void insert(const uint8_t data[packetSize]);
     void tick(HIDDevice &hidDevice);
 
 private:
     struct Packet {
-        uint8_t data[20];
+        uint8_t data[packetSize];
     };
 
     PacketHandling() = default;

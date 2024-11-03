@@ -4,7 +4,7 @@ PacketHandling &PacketHandling::getInstance() {
     return instance;
 }
 
-void PacketHandling::insert(const uint8_t data[20]) {
+void PacketHandling::insert(const uint8_t data[packetSize]) {
     Packet packet;
     memcpy(packet.data, data, sizeof(packet.data));
     buffer.push(packet);
