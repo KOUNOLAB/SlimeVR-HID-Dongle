@@ -36,7 +36,7 @@ private:
                                      const uint8_t *trackerMacAddress);
     void invokePacketReceivedEvent(const uint8_t data[packetSizeBytes]);
 
-    void handleMessage(const uint8_t *senderMacAddress,
+    void handleMessage(const esp_now_recv_info_t *senderInfo,
                        const uint8_t *data,
                        int dataLen);
 
@@ -61,5 +61,5 @@ private:
                                                  0xff};
     static constexpr uint8_t espnowWifiChannel = 1;
 
-    friend void onReceive(const uint8_t *, const uint8_t *, int);
+    friend void onReceive(const esp_now_recv_info_t *, const uint8_t *, int);
 };
