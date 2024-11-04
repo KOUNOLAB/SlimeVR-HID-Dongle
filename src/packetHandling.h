@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HID.h"
+#include "espnow/espnow.h"
 
 #include <Arduino.h>
 #include <CircularBuffer.hpp>
@@ -10,18 +11,15 @@
 #include <cstring>
 
 class PacketHandling {
-private:
-    static constexpr size_t packetSize = 16;
-
 public:
     static PacketHandling &getInstance();
 
-    void insert(const uint8_t data[packetSize]);
+    void insert(const uint8_t data[ESPNowCommunication::packetSizeBytes]);
     void tick(HIDDevice &hidDevice);
 
 private:
     struct Packet {
-        uint8_t data[packetSize];
+        uint8_t data[ESPNowCommunication::packetSizeBytes];
     };
 
     PacketHandling() = default;
@@ -29,6 +27,6 @@ private:
     static PacketHandling instance;
 
     static constexpr size_t bufferSize = 128;
-    static constexpr size_t maxPacketsPerTick = 1;
+    static constexpr size_t maxPacketsPerTick = 4;
     CircularBuffer<Packet, bufferSize> buffer;
 };

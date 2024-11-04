@@ -11,7 +11,7 @@ static const uint8_t hid_report_desc[] = {
     0xA1, 0x01,        // Collection (Application)
     0x09, 0x00,        // asage (Undefined)
     0x75, 0x08,        //   Report Size (8)
-    0x95, 0x3C,        //   Report Count (60)
+    0x95, 0x40,        //   Report Count (60)
     0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0xC0,              // End Collection
 };
